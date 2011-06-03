@@ -42,8 +42,8 @@ const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource://gre/modules/AddonManager.jsm");
 Cu.import("resource://ffshare/modules/progress.js");
-// the open web apps injector - we can avoid the jschannel as we are chome.
-Cu.import("resource://openwebapps/modules/openwebapps.js");
+// the open web apps service helpers.
+Cu.import("resource://openwebapps/modules/services.js");
 
 const NS_XUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 const SHARE_BUTTON_ID = "share-button";
@@ -185,9 +185,8 @@ FFShare.prototype = {
 
     togglePanel: function(options) {
         var anchor = this.window.document.getElementById('share-button');
-        var owa = new openwebapps(this.window);
-        owa._init();
-        owa._services.invoke(this.window,
+        var services = new serviceInvocationHandler(this.window);
+        services.invoke(this.window,
             "link.send",
             {
                 url: this.window.location.toString(),

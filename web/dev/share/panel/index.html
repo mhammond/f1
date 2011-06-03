@@ -3,8 +3,10 @@
 <head>
     <title>F1: Popup</title>
     <link rel="stylesheet" type="text/css" href="/dev/share/panel/style.css">
+<!--    <script src="http://stage.myapps.mozillalabs.com/jsapi/include.js" type="text/javascript" charset="utf-8"></script> -->
     <script data-main="/dev/share/panel/index.js" src="/dev/scripts/requireplugins-jquery.js" charset="utf-8"></script>
 </head>
+
 <body>
 
 <noscript>
@@ -12,26 +14,25 @@
     blocking add-on, please allow "mozillamessaging.com" and try again.
 </noscript>
 
+
 <div id="wrapper">
   <div id="shareui" class="hidden">
     <header class="hbox">
         <h1 id="panelHeader" class="boxFlex">Mozilla F1</h1>
         <nav>
             <ul>
-                <li id="newLink" class="hidden"><a href="/dev/settings/#show=new" class="settingsLink new" target="_blank">new accounts!</a></li>
-                <li><a href="/dev/settings/" class="configureToggle" target="f1.settings">settings</a></li>
                 <li id="closeLink"><span class="close"></span></li>
             </ul>
         </nav>
     </header>
-
+    
     <div class="sharebox">
-
-      <div id="accounts">
-      </div>
-
+        <div id="accounts">
+        </div>
+        <div id="confirm">
+          <div id="confirmbutton"><button ">Share</button></div>
+        </div>
     </div>
-
   </div>
 
   <!-- Click blocker for status messages. Should be before status messages but
@@ -39,6 +40,20 @@
   <div id="clickBlock" class="hidden"></div>
 
   <!-- Start status messages -->
+  <div id="statusNoApps" class="status hidden">
+    <!-- probably will never need this as we will have "apps" built-in.
+         for now it remains useful when the app addon fails and reports no
+         apps even when there are!
+    -->
+    <table>
+      <tr>
+        <td>
+          There are no apps installed which support sharing.
+          &lt;imagine link to app store&gt;
+        </td>
+      </tr>
+    </table>
+  </div>
 
   <div id="statusSettings" class="status hidden noConfig">
     <table>

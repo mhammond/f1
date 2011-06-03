@@ -122,6 +122,18 @@ function startup(data, reason) AddonManager.getAddonByID(data.id, function(addon
     /* Setup l10n, getString is loaded from addonutils */
     getString.init(addon);
 
+    /* Tell OpenWebApps we are also an "app" */
+    Cu.import("resource://openwebapps/modules/api.js");
+    if (FFRepoImplService) {
+      // need a window to register the app...
+      var browser = Services.wm.getMostRecentWindow("navigator:browser");
+      // Use the OWA origin to avoid confirmation prompts (which means we must
+      // use a FQ url in the args)
+      FFRepoImplService.install('resource://openwebapps',
+                                {url: 'http://localhost:5000/apps/f1.webapp'},
+                                browser);
+    }
+
     dump("init windows\n");
     eachWindow(loadIntoWindow);
 
@@ -131,6 +143,17 @@ function startup(data, reason) AddonManager.getAddonByID(data.id, function(addon
 
 function shutdown(data, reason) {
     if (reason == APP_SHUTDOWN) return;
+
+    Cu.import("resource://openwebapps/modules/api.js");
+    if (FFRepoImplService) {
+      FFRepoImplService.uninstall('http://localhost:5000',
+                                  function() {dump('f1 app uninstalled');},
+                                  function(err) {
+                                    dump('f1 app failed to uninstall: ' + err.toString() + "\n");
+                                    dump('reason: ' + err.error + "\n");
+                                    dump('stack:' + err.stack + "\n");
+                                    });
+    }
 
     let id = getAddonShortName(data.id);
     let resource = Services.io.getProtocolHandler("resource")

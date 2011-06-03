@@ -25,6 +25,7 @@
 <head>
   <title>F1 Alpha</title>
   <link rel="stylesheet" type="text/css" href="/dev/share/share.css">
+  <script src="http://stage.myapps.mozillalabs.com/jsapi/include.js" type="text/javascript" charset="utf-8"></script> 
   <script data-main="/dev/share/index.js" src="/dev/scripts/requireplugins-jquery.js" charset="utf-8"></script>
   <!-- Uncomment if you want to use more jQuery UI besides tabs. -->
   <!-- script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script-->
@@ -39,11 +40,6 @@
 
   <ul class="nav">
     <li class="debugTab"><a class="icon debug" name="debug" href="#debug">debug</a></li>
-    <div class="user-info">
-      <span class="avatar"><img class="avatar" src=""></span>
-      <span class="username"></span>
-      <span class="status inactive"></span>
-    </div>
     <div class="rightActions">
       <a id="newLink" href="/dev/settings/#show=new" class="settingsLink new hidden" target="_blank">new accounts!</a>
       <a href="/dev/settings/" class="settingsLink" target="_blank">settings</a>
@@ -75,52 +71,12 @@
 
 <!-- Start templates -->
 <script id="tabsTemplate" type="text/template">
-  <li class="{tabName} leftTab hidden"><a class="icon {type}" name="{name}" href="#{type}">{name}</a></li>
+  <li class="{tabName}Tab leftTab"><a class="icon {tabName}" name="{manifest.name}" href="#{tabName}">{name}</a></li>
 </script>
 
 <script id="panelsTemplate" type="text/template">
-  <div id="{type}" class="ui-tabs-hide">
-    <form name="{type}Send" class="hbox messageForm" action="#">
-      <div class="user inactive col">
-        <input type="hidden" name="domain" value="{domain}" />
-        <input type="hidden" name="userid" value="" />
-        <input type="hidden" name="username" value="" />
-        <input type="hidden" name="picture" value="" />
-        <input type="hidden" name="link" value="" />
-        <input type="hidden" name="title" value="" />
-        <input type="hidden" name="caption" value="" />
-        <input type="hidden" name="description" value="" />
-        <span class="avatar"><img class="avatar" src="/dev/share/i/face2.png"></span>
-        <span class="username">Username</span>
-      </div>
-      { !features.subject [}
-      <div class="thumb hidden">
-        <div class="image"><img class="thumb"/></div>
-        <div class="meta">
-          <div class="title"></div>
-          <div class="description"></div>
-          <a title="The link for this page" class="url"></a>
-          <a title="A smaller, shorter link" class="surl"></a>
-        </div>
-      </div>
-      {]}
-      { and(features.direct,features.subject) [}
-      <div class="addressing">
-        <input name="to" placeholder="to" type="text" value="" class="ffshareAutoComplete" autocompletestore="{domain}"/>
-      { features.subject [}
-        <input name="subject" placeholder="subject" type="text" value=""/>
-      {]}
-      </div>
-      {]}
-      <div class="message boxFlex">
-        <textarea class="message" placeholder="Type your message here, and we'll attach the link when you send." name="message"></textarea>
-      { features.counter [}
-        <div class="counter"></div>
-      {]}
-      </div>
-      <button class="share" type="submit">share</button>
-    </form>
-  </div>
+  <iframe id="{tabName}" class="ui-tabs-hide" src="{shareSrc}">
+  </iframe>
 </script>
 
 <script id="accountTemplate" type="text/template">

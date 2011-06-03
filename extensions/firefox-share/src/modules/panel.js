@@ -134,6 +134,9 @@ sharePanel.prototype = {
     let self = this;
     let contentWindow = this.browser.contentWindow;
     contentWindow = contentWindow.wrappedJSObject ? contentWindow.wrappedJSObject : contentWindow;
+// Ack - for now we don't add this listener as the OWA framework also adds
+// a message listener.  Must revisit this.
+/***    
     contentWindow.addEventListener("message", function (evt) {
       // Make sure we only act on messages from the page we expect.
       if (self.ffshare.prefs.share_url.indexOf(evt.origin) === 0) {
@@ -159,6 +162,7 @@ sharePanel.prototype = {
         }
       }
     }, false);
+***/    
   },
 
   // Fired when a pref changes from content space. the pref object has

@@ -36,6 +36,7 @@ define([ "require", "jquery", "blade/object", "blade/fn", "rdapi", "oauth",
         "blade/jig", "blade/url", "placeholder", "AutoComplete", "dispatch", "accounts",
          "storage", "services", "shareOptions", "widgets/PageInfo",
          "widgets/DebugPanel", "widgets/AccountPanel", "dotCompare",
+         "jschannel",
          "jquery-ui-1.8.7.min", "jquery.textOverflow"],
 function (require,   $,        object,         fn,         rdapi,   oauth,
           jig,         url,        placeholder,   AutoComplete,   dispatch,   accounts,
@@ -57,6 +58,27 @@ function (require,   $,        object,         fn,         rdapi,   oauth,
     },
     isGreaterThan076 = dotCompare(store.extensionVersion, "0.7.7") > -1;
 
+  // find the list of all link.send app-services
+  var shareApps = [],
+      shareChannels = [];
+
+/***
+  navigator.apps.mgmt.list(function(items) {
+    for (var key in items) {
+      var manifest = items[key].manifest;
+      if (!manifest)
+        continue;
+      if (manifest && manifest.experimental && manifest.experimental.services) {
+        for (var index in manifest.experimental.services) {
+          var svcinfo = manifest.experimental.services[index];
+          if (svcinfo["link.send"]) {
+            shareApps.push(items[key]);
+          }
+        }
+      }
+    }
+  });
+***/
   function hide() {
     dispatch.pub('hide');
   }
@@ -67,6 +89,61 @@ function (require,   $,        object,         fn,         rdapi,   oauth,
   }
   //For debug tab purpose, make it global.
   window.closeShare = close;
+
+  function createChannels()
+  {
+    // XX we shouldn't be creating all the channels at once
+    for (var i=0;i<shareApps.length;i++)
+    {
+      var svc = shareApps[i];
+      try {
+        var anIframe = document.getElementById("svc-frame-" + i);
+        
+        var chan = Channel.build({
+            window: anIframe.contentWindow,
+            origin: svc.url,
+            scope: "openwebapps_conduit"
+        });
+
+        chan.call({
+            method: "link.send",
+            params: options,
+            success: function() {}, /* perhaps record the fact that it worked? */
+            error: (function() {return function(error, message) {
+              var messageData = {cmd:"error", error:error, msg:message};
+              var msg = document.createEvent("MessageEvent");
+              msg.initMessageEvent("message", // type
+                                   true, true, // bubble, cancelable
+                                   JSON.stringify(messageData),  // data
+                                   "resource://openwebapps/service", "", window); // origin, source
+              document.dispatchEvent(msg);
+              
+            }}())
+        });    
+        shareChannels.push(chan);
+      } catch (e) {
+        dump("Warning: unable to create channel to " + svc.url + ": " + e + "\n");
+      }
+    }
+  }
+
+  function confirm()
+  {
+    var selected = $("#account-accordion").accordion('option', 'active'); // => 0
+    shareChannels[selected].call({
+      method: "confirm",
+      success: function(result) {
+        var messageData = {app:shareApps[selected].app, cmd:"result", result:result};
+        var msg = document.createEvent("MessageEvent");
+        msg.initMessageEvent("message", // type
+                             true, true, // bubble, cancelable
+                             JSON.stringify(messageData),  // data
+                             "resource://openwebapps/service", "", window); // origin, source
+        document.dispatchEvent(msg);
+      }
+    });
+  }
+  $("#confirmbutton").click(confirm);
 
   function updateChromeStatus(status, statusId, message) {
     dispatch.pub('updateStatus', [status, statusId, message, options.url]);
@@ -307,68 +384,56 @@ function (require,   $,        object,         fn,         rdapi,   oauth,
   /**
    * Shows the accounts after any AccountPanel overlays have been loaded.
    */
-  function displayAccounts(accounts, panelOverlayMap) {
+  function displayAccounts() {
     var lastSelectionMatch = 0,
-        accountsDom = $('#accounts'),
-        fragment = document.createDocumentFragment(),
+        container = document.createElement("div"),
         debugPanel,
         i = 0;
 
+    container.setAttribute("id", "account-accordion");
     $('#shareui').removeClass('hidden');
 
+    if (shareApps.length==0) {
+      showStatus('statusNoApps');
+      return;
+    }
+
     //Figure out what accounts we do have
-    accounts.forEach(function (account) {
-      // protect against old style account data
-      if (typeof(account.profile) === 'undefined') return;
+    shareApps.forEach(function (app) {
+      var data, PanelCtor,
+          name = app.manifest.name;
 
-      var domain = account.profile.accounts[0].domain,
-          data, PanelCtor;
-
-      if (domain && actions[domain]) {
-        //Make sure to see if there is a match for last selection
-        if (actions[domain].type === store.lastSelection) {
+      //Make sure to see if there is a match for last selection
+      if (name === store.lastSelection) {
           lastSelectionMatch = i;
-        }
-
-        data = actions[domain];
-        data.domain = domain;
-
-        // Get the contructor function for the panel.
-        PanelCtor = require(panelOverlayMap[domain] || 'widgets/AccountPanel');
-
-        accountPanels.push(new PanelCtor({
-          options: options,
-          account: account,
-          svc: data
-        }, fragment));
       }
-
+      var tabName = "svc-frame-" + i;
+      var div = document.createElement("div");
+      var a = document.createElement("a")
+      a.setAttribute("href", "#"+tabName);
+      a.textContent = name;
+      div.appendChild(a);
+      container.appendChild(div);
+      var iframe = document.createElement("iframe");
+      iframe.setAttribute("id", tabName);
+      iframe.setAttribute("src", app.url);
+      container.appendChild(iframe);
       i++;
     });
 
     // add the account panels now
-    accountsDom.append(fragment);
+    $('#accounts').append(container);
 
+/***
     //Add debug panel if it is allowed.
     if (options.prefs.system === 'dev') {
       debugPanel = new DebugPanel({}, accountsDom[0]);
     }
+**/
 
     checkBase64Preview();
-
-    //If no matching accounts match the last selection clear it.
-    if (lastSelectionMatch < 0 && !store.accountAdded && store.lastSelection) {
-      delete store.lastSelection;
-      lastSelectionMatch = 0;
-    }
-
     // which domain was last active?
-    $("#accounts").accordion({ active: lastSelectionMatch });
-
-    //Reset the just added state now that accounts have been configured one time.
-    if (store.accountAdded) {
-      delete store.accountAdded;
-    }
+    $("#account-accordion").accordion({ active: lastSelectionMatch });
 
     //Inform extension the content size has changed, but use a delay,
     //to allow any reflow/adjustments.
@@ -421,6 +486,45 @@ function (require,   $,        object,         fn,         rdapi,   oauth,
 
   }
 
+  function handleMessage(event)
+  {
+    // message is posted by OWA directly from our own iframe.
+    // Is this origin check necessary?
+    console.log("handleMessage from", event.origin);
+    dump("handleMessage from " + event.origin);
+    var myOrigin = window.location.protocol + "//" + window.location.host;
+    if (event.origin === myOrigin)
+    {
+      var cmdRequest = JSON.parse(event.data);
+      if (cmdRequest.cmd == "setup" && cmdRequest.args) {
+        shareApps = cmdRequest.serviceList;
+        // cleanup any old channels.
+        while (shareChannels.length) {
+          shareChannels.pop().destroy();
+        }
+        // delete any old pageinfos
+        $("#pageInfo").remove();
+        // and old accounts/labels
+        $("#account-accordion").remove();
+
+        // Extract options and update the page info at the top.
+        for (var prop in cmdRequest.args) {
+          if (cmdRequest.args.hasOwnProperty(prop)) {
+            options[prop] = cmdRequest.args[prop];
+          }
+        }
+        pageInfo = new PageInfo({
+          options: options
+        }, $('.sharebox')[0], 'prepend');
+        // finally ready to update the DOM and create the channels for the
+        // services...
+        displayAccounts();
+//      } else if (cmdRequest.cmd === "start_channels") {
+        createChannels();
+      }
+    }
+  }
+
   //For the "new items" link, only show it for x number of days after showing it.
   //NOTE: when updating for newer releases, delete the old value from the
   //storage.
@@ -437,6 +541,9 @@ function (require,   $,        object,         fn,         rdapi,   oauth,
       showNew = true;
     }
   }
+
+  // from OWA
+  window.addEventListener("message", handleMessage, false);
 
   $(function () {
     //Set the type of system as a class on the UI to show/hide things in
@@ -513,7 +620,12 @@ function (require,   $,        object,         fn,         rdapi,   oauth,
       options: options
     }, $('.sharebox')[0], 'prepend');
 
+    // there is so much I don't grok about js/jquery - the DOM is ready when
+    // we get to here, so why does the call have no effect unless done on a
+    // timeout???
+    //setTimeout(displayAccounts, 100);
     //Fetch the accounts.
+/***    
     accounts(
       updateAccounts,
 
@@ -526,7 +638,7 @@ function (require,   $,        object,         fn,         rdapi,   oauth,
         }
       }
     );
-
+***/
     // watch for hash changes, update options and trigger
     // update event. However, if it has been more than a day,
     // refresh the UI.
@@ -555,6 +667,5 @@ function (require,   $,        object,         fn,         rdapi,   oauth,
         dispatch.pub('sizeToContent');
       }
     }, false);
-
   });
 });

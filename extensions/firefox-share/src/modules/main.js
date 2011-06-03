@@ -42,6 +42,8 @@ const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource://gre/modules/AddonManager.jsm");
 Cu.import("resource://ffshare/modules/progress.js");
+// the open web apps injector - we can avoid the jschannel as we are chome.
+Cu.import("resource://openwebapps/modules/openwebapps.js");
 
 const NS_XUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 const SHARE_BUTTON_ID = "share-button";
@@ -182,12 +184,32 @@ FFShare.prototype = {
     oldKeycodeId: "key_old_ffshare",
 
     togglePanel: function(options) {
+        var anchor = this.window.document.getElementById('share-button');
+        var owa = new openwebapps(this.window);
+        owa._init();
+        owa._services.invoke(this.window,
+            "link.send",
+            {
+                url: this.window.location.toString(),
+                caption: "Something interesting!",
+                description: "The description"
+            },
+            function() {
+                alert("Yo - worked!");
+            },
+            function() {
+                alert("Yo - failed!");
+            },
+            anchor);
+
+        /***
         let popup = this.window.document.getElementById('share-popup');
         if (popup.state == 'open') {
             this.sharePanel.close();
         } else {
             this.sharePanel.show(options);
         }
+        ***/
     },
 
     switchTab: function (waitForLoad) {
